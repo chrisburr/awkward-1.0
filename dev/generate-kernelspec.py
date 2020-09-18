@@ -841,6 +841,52 @@ def get_paramcheck(funcroles, alltokens, allfuncargs):
     return funcs
 
 
+def sort_specializations(keystring):
+    ordering = [
+        "bool",
+        "int8",
+        "int16",
+        "int32",
+        "int64",
+        "u8",
+        "uint8",
+        "u16",
+        "uint16",
+        "u32",
+        "uint32",
+        "u64",
+        "uint64",
+        "float16",
+        "float32",
+        "float64",
+        "complex64",
+        "complex128",
+        "complex256",
+    ]
+    flag = True
+    for i, element in enumerate(ordering):
+        if element.lower() in keystring.lower() and not (
+            element.lower().startswith("int")
+            and keystring[keystring.lower().find(element.lower()) - 1] == "u"
+        ):
+            x = i
+            y = 0
+            keystring = keystring[keystring.find(element) + 1 :]
+            flag = False
+            break
+    for i, element in enumerate(ordering):
+        if element.lower() in keystring.lower() and not (
+            element.lower().startswith("int")
+            and keystring[keystring.lower().find(element.lower()) - 1] == "u"
+        ):
+            y = i
+            flag = False
+            break
+    if flag:
+        return keystring
+    return (x, y)
+
+
 if __name__ == "__main__":
     kernelfiles = [
         os.path.join(
@@ -894,11 +940,15 @@ if __name__ == "__main__":
                 kerneldict[funcname] += "- name: " + funcname + "\n"
                 if "childfunc" in tokens[funcname].keys():
                     kerneldict[funcname] += " " * 2 + "specializations:\n"
+                    childfuncdict = {}
                     for childfunc in tokens[funcname]["childfunc"]:
-                        kerneldict[funcname] += " " * 4 + "- name: " + childfunc + "\n"
-                        kerneldict[funcname] += " " * 6 + "args:\n"
+                        childfuncdict[childfunc] = ""
+                        childfuncdict[childfunc] += (
+                            " " * 4 + "- name: " + childfunc + "\n"
+                        )
+                        childfuncdict[childfunc] += " " * 6 + "args:\n"
                         for arg in funcargs[childfunc].keys():
-                            kerneldict[funcname] += (
+                            childfuncdict[childfunc] += (
                                 " " * 8
                                 + "- {name: "
                                 + arg
@@ -909,12 +959,20 @@ if __name__ == "__main__":
                             )
                             if not paramchecks[funcname][arg] == "outparam":
                                 if "role" in funcroles[childfunc][arg].keys():
-                                    kerneldict[funcname] += (
+                                    childfuncdict[childfunc] += (
                                         ", role: " + funcroles[childfunc][arg]["role"]
                                     )
                                 else:
-                                    kerneldict[funcname] += ", role: default"
-                            kerneldict[funcname] += "}\n"
+                                    childfuncdict[childfunc] += ", role: default"
+                            childfuncdict[childfunc] += "}\n"
+                    try:
+                        for key in sorted(
+                            childfuncdict.keys(), key=sort_specializations
+                        ):
+                            kerneldict[funcname] += childfuncdict[key]
+                    except TypeError:
+                        for key in sorted(childfuncdict.keys()):
+                            kerneldict[funcname] += childfuncdict[key]
                 else:
                     kerneldict[funcname] += " " * 2 + "specializations:\n"
                     kerneldict[funcname] += " " * 4 + "- name: " + funcname + "\n"
