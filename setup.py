@@ -57,7 +57,10 @@ class CMakeBuild(setuptools.command.build_ext.build_ext):
            compiler_path = self.compiler.compiler_cxx[0]
            cmake_args.append("-DCMAKE_CXX_COMPILER={0}".format(compiler_path))
         except AttributeError:
-            print("Not able to access compiler path (on Windows), using CMake default")
+            if "CXX" in os.environ:
+                cmake_args.append("-DCMAKE_CXX_COMPILER={0}".format(os.environ["CXX"]))
+            else:
+                print("Not able to access compiler path and CXX not set (on Windows), using CMake default")
 
         cfg = "Debug" if self.debug else "Release"
         build_args = ["--config", cfg]
